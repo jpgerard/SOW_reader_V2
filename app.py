@@ -10,6 +10,14 @@ import json
 import io
 from dotenv import load_dotenv
 import anthropic
+import torch
+
+# Disable PyTorch JIT
+torch.jit.disable()
+
+# Clear Streamlit cache
+st.cache_data.clear()
+st.cache_resource.clear()
 
 # Load environment variables
 load_dotenv()
