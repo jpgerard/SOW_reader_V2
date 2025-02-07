@@ -22,50 +22,16 @@ class NLPExtractor:
     """Extracts requirements and entities using NLP techniques."""
     
     def __init__(self):
-        # Initialize without loading model
-        self.nlp = None
-        self.initialize_spacy()
-        
-        # Initialize other attributes
-        
-    def initialize_spacy(self):
-        """Initialize spaCy model with fallback options."""
+        # Initialize spaCy model with fallback
         try:
-            # Try loading the model
             self.nlp = spacy.load("en_core_web_sm")
-        except OSError:
-            try:
-                # If model not found, try downloading it
-                import sys
-                import subprocess
-                subprocess.check_call([
-                    sys.executable, 
-                    "-m", 
-                    "spacy", 
-                    "download", 
-                    "en_core_web_sm"
-                ])
-                # Try loading again after download
-                self.nlp = spacy.load("en_core_web_sm")
-            except Exception as e:
-                import streamlit as st
-                st.error(f"Error loading spaCy model: {str(e)}")
-                st.info("Attempting to download spaCy model...")
-                try:
-                    # One more attempt with pip
-                    subprocess.check_call([
-                        sys.executable,
-                        "-m",
-                        "pip",
-                        "install",
-                        "--no-cache-dir",
-                        "https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.7.0/en_core_web_sm-3.7.0.tar.gz"
-                    ])
-                    self.nlp = spacy.load("en_core_web_sm")
-                except Exception as e:
-                    st.error(f"Failed to initialize spaCy: {str(e)}")
-                    # Create a minimal pipeline for basic functionality
-                    self.nlp = spacy.blank("en")
+        except Exception as e:
+            import streamlit as st
+            st.warning("Using basic NLP pipeline. Some features may be limited.")
+            # Create minimal pipeline for basic functionality
+            self.nlp = spacy.blank("en")
+            # Add essential components
+            self.nlp.add_pipe("sentencizer")
         
         # Common requirement indicators
         self.requirement_patterns = [

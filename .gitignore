@@ -51,7 +51,6 @@ package.json
 postcss.config.js
 tailwind.config.js
 tsconfig.json
-runtime.txt
 .devcontainer/
 examples/
 public/
