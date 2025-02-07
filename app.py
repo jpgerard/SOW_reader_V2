@@ -10,14 +10,14 @@ import json
 import io
 from dotenv import load_dotenv
 import anthropic
+
+# Load environment variables
+load_dotenv()
 import pdfplumber
 from docx import Document
 from sow_processor import SOWProcessor
 from section_parser import SectionParser
 from nlp_extractor import NLPExtractor
-
-# Load environment variables
-load_dotenv()
 
 def check_api_key():
     """Check if ANTHROPIC_API_KEY is set and valid"""

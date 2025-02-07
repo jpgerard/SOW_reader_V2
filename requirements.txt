@@ -1,3 +1,8 @@
-python-docx>=0.8.11
-PyPDF2>=3.0.0
-spacy>=3.7.0
+streamlit
+anthropic
+python-dotenv
+pandas
+pdfplumber
+python-docx
+openpyxl
+spacy
