@@ -1,5 +1,5 @@
 streamlit==1.42.0
-numpy==1.26.4
+numpy>=1.24.0,<2.0.0
 spacy==3.7.2
 https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.7.1/en_core_web_sm-3.7.1-py3-none-any.whl
 pdfplumber==0.10.3
@@ -12,10 +12,9 @@ anthropic==0.42.0
 httpx==0.23.0
 openpyxl
 PyPDF2==3.0.1
-torch==2.1.1+cpu
-torchvision==0.16.1+cpu
-torchaudio==2.1.1+cpu
---extra-index-url https://download.pytorch.org/whl/cpu
+torch==2.1.1
+torchvision==0.16.1
+torchaudio==2.1.1
 sentence-transformers>=2.5.0
 faiss-cpu>=1.9.0
 transformers>=4.36.0
