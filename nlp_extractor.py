@@ -22,8 +22,27 @@ class NLPExtractor:
     """Extracts requirements and entities using NLP techniques."""
     
     def __init__(self):
-        # Load spaCy model with custom pipeline components
-        self.nlp = spacy.load("en_core_web_sm")
+        # Load spaCy model with retries
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                self.nlp = spacy.load("en_core_web_sm")
+                break
+            except IOError:
+                if attempt < max_retries - 1:
+                    print(f"Attempt {attempt + 1}: Failed to load spaCy model, retrying...")
+                    try:
+                        import subprocess
+                        subprocess.run([
+                            "python", "-m", "spacy", "download", "en_core_web_sm"
+                        ], check=True)
+                    except Exception as e:
+                        print(f"Error downloading model: {e}")
+                else:
+                    raise Exception(
+                        "Failed to load spaCy model. Please ensure en_core_web_sm "
+                        "is installed using: python -m spacy download en_core_web_sm"
+                    )
         
         # Common requirement indicators
         self.requirement_patterns = [
