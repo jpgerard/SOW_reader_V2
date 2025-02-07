@@ -22,27 +22,50 @@ class NLPExtractor:
     """Extracts requirements and entities using NLP techniques."""
     
     def __init__(self):
-        # Load spaCy model with retries
-        max_retries = 3
-        for attempt in range(max_retries):
+        # Initialize without loading model
+        self.nlp = None
+        self.initialize_spacy()
+        
+        # Initialize other attributes
+        
+    def initialize_spacy(self):
+        """Initialize spaCy model with fallback options."""
+        try:
+            # Try loading the model
+            self.nlp = spacy.load("en_core_web_sm")
+        except OSError:
             try:
+                # If model not found, try downloading it
+                import sys
+                import subprocess
+                subprocess.check_call([
+                    sys.executable, 
+                    "-m", 
+                    "spacy", 
+                    "download", 
+                    "en_core_web_sm"
+                ])
+                # Try loading again after download
                 self.nlp = spacy.load("en_core_web_sm")
-                break
-            except IOError:
-                if attempt < max_retries - 1:
-                    print(f"Attempt {attempt + 1}: Failed to load spaCy model, retrying...")
-                    try:
-                        import subprocess
-                        subprocess.run([
-                            "python", "-m", "spacy", "download", "en_core_web_sm"
-                        ], check=True)
-                    except Exception as e:
-                        print(f"Error downloading model: {e}")
-                else:
-                    raise Exception(
-                        "Failed to load spaCy model. Please ensure en_core_web_sm "
-                        "is installed using: python -m spacy download en_core_web_sm"
-                    )
+            except Exception as e:
+                import streamlit as st
+                st.error(f"Error loading spaCy model: {str(e)}")
+                st.info("Attempting to download spaCy model...")
+                try:
+                    # One more attempt with pip
+                    subprocess.check_call([
+                        sys.executable,
+                        "-m",
+                        "pip",
+                        "install",
+                        "--no-cache-dir",
+                        "https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.7.0/en_core_web_sm-3.7.0.tar.gz"
+                    ])
+                    self.nlp = spacy.load("en_core_web_sm")
+                except Exception as e:
+                    st.error(f"Failed to initialize spaCy: {str(e)}")
+                    # Create a minimal pipeline for basic functionality
+                    self.nlp = spacy.blank("en")
         
         # Common requirement indicators
         self.requirement_patterns = [
