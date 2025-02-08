@@ -32,17 +32,16 @@ class SectionParser:
     """Handles section parsing and hierarchical structure analysis."""
     
     def __init__(self):
-        # Enhanced section patterns with named groups and hierarchy support
+        # Generic section patterns that match common formats
         self.section_patterns = [
-            # Letter sections (A, B, etc. with optional subsections)
-            (r'^(?P<id>[A-Z](?:\.\d+)?)\s+(?P<title>[^.]+?)(?:\s*\.*\s*\d*\s*$|$)', 1),  # A, A.1
+            # Match any letter/number followed by title
+            (r'^\s*(?P<id>[A-Z0-9](?:[-.]\d+)*)\s+(?P<title>[^.]+?)(?:\s*\.+\s*\d*\s*$|$)', 1),
             
-            # Numbered sections (1, 2, etc. with optional subsections)
-            (r'^(?P<id>\d+(?:\.\d+)?)\s+(?P<title>[^.]+?)(?:\s*\.*\s*\d*\s*$|$)', 1),  # 1, 1.1
+            # Match section/article keywords
+            (r'^\s*(?:Section|SECTION|Article|ARTICLE)\s*(?P<id>\d+(?:[-.]\d+)*)\s*[-.:)]\s*(?P<title>.+?)(?:\s*\.+\s*\d*\s*$|$)', 1),
             
-            # Section/Article keyword patterns
-            (r'^(?:SECTION|Section)\s+(?P<id>\d+(?:\.\d+)?)\s*[-–:.]\s*(?P<title>[^.]+?)(?:\s*\.*\s*\d*\s*$|$)', 1),
-            (r'^(?:ARTICLE|Article)\s+(?P<id>\d+(?:\.\d+)?)\s*[-–:.]\s*(?P<title>[^.]+?)(?:\s*\.*\s*\d*\s*$|$)', 1),
+            # Match parenthesized numbers/letters
+            (r'^\s*\((?P<id>[A-Z0-9](?:[-.]\d+)*)\)\s+(?P<title>[^.]+?)(?:\s*\.+\s*\d*\s*$|$)', 1),
         ]
         
         # Patterns to clean section IDs
@@ -51,27 +50,27 @@ class SectionParser:
             (r'\.+$', ''),          # Remove trailing dots
             (r'^0+', ''),           # Remove leading zeros
             (r'\.0+', '.'),         # Remove leading zeros after dots
+            (r'-', '.'),            # Convert dashes to dots
         ]
         
         # Patterns to identify table of contents entries
         self.toc_patterns = [
-            r'^\s*TABLE OF CONTENTS\s*$',  # Exact TOC header
-            r'^\s*CONTENTS\s*$',           # Exact Contents header
-            r'^\s*Table of Contents\s*$',   # Exact TOC header (mixed case)
-            r'^\s*Page \d+ of \d+\s*$',    # Exact page X of Y format
-            r'^\s*Source-Selection-Sensitive\s*$',  # Common headers
+            r'^\s*TABLE OF CONTENTS\s*$',
+            r'^\s*CONTENTS\s*$',
+            r'^\s*Table of Contents\s*$',
+            r'^\s*Page \d+ of \d+\s*$',
+            r'^\s*Source-Selection-Sensitive\s*$',
             r'^\s*For Official Use Only\s*$',
-            r'\s*\.{3,}\s*\d+\s*$',        # Dots followed by page number
-            r'\s{3,}\d+\s*$',              # Multiple spaces followed by page number
         ]
         
         # Patterns for section ID normalization
         self.id_normalization_patterns = [
-            (r'Section\s+(\d+)', r'\1'),  # Section 1 -> 1
-            (r'SECTION\s+(\d+)', r'\1'),  # SECTION 1 -> 1
-            (r'Article\s+(\d+)', r'\1'),  # Article 1 -> 1
-            (r'\((\d+)\)', r'\1'),  # (1) -> 1
-            (r'\(([A-Z])\)', r'\1'),  # (A) -> A
+            (r'Section\s+(\d+)', r'\1'),
+            (r'SECTION\s+(\d+)', r'\1'),
+            (r'Article\s+(\d+)', r'\1'),
+            (r'\((\d+)\)', r'\1'),
+            (r'\(([A-Z])\)', r'\1'),
+            (r'-', '.'),            # Convert dashes to dots
         ]
 
     def normalize_section_id(self, section_id: str) -> str:
@@ -82,35 +81,30 @@ class SectionParser:
         return normalized
 
     def get_section_level(self, section_id: str) -> int:
-        """
-        Determine section level from ID.
-        
-        Examples:
-        A -> 1
-        A.1 -> 2
-        1 -> 1
-        1.1 -> 2
-        """
-        # Remove any non-essential characters
+        """Determine section level from ID."""
         clean_id = self.normalize_section_id(section_id)
         
-        # Count components
-        if '.' in clean_id:
-            return len(clean_id.split('.'))
-        elif clean_id.isalpha() or clean_id.isdigit():
-            return 1
-        else:
-            # Mixed format, count significant parts
-            parts = re.findall(r'[A-Z]|\d+', clean_id)
+        # Split on dots or dashes
+        parts = re.split(r'[.-]', clean_id)
+        if len(parts) > 1:
             return len(parts)
+            
+        # Single letter or number
+        if len(clean_id) == 1:
+            return 1
+            
+        # Count parts separated by any delimiter
+        parts = re.findall(r'[A-Z]|\d+', clean_id)
+        return len(parts)
 
     def extract_section_info(self, line: str) -> Optional[Tuple[str, str, int]]:
-        """
-        Extract section ID, title, and level from a line.
-        Returns tuple of (id, title, level) or None if not a section header.
-        """
+        """Extract section ID, title, and level from a line."""
         line = line.strip()
-        if not line or self.is_toc_entry(line):
+        if not line:
+            return None
+            
+        # Skip TOC entries and headers/footers
+        if self.is_toc_entry(line):
             return None
             
         for pattern, base_level in self.section_patterns:
@@ -124,10 +118,12 @@ class SectionParser:
                     continue
                     
                 # Clean up title
-                title = re.sub(r'\s*-\s*', '-', title)  # Fix spaced hyphens
-                title = re.sub(r'\s+', ' ', title)      # Normalize spaces
+                title = re.sub(r'\s*-\s*', '-', title)
+                title = re.sub(r'\s+', ' ', title)
+                # Remove trailing dots and page numbers
+                title = re.sub(r'\s*\.{2,}\s*\d*\s*$', '', title)
                 
-                # Calculate actual level
+                # Calculate level
                 level = self.get_section_level(section_id)
                 if level == 1:
                     level = base_level
@@ -147,7 +143,7 @@ class SectionParser:
         return any(re.match(pattern, line, re.IGNORECASE) for pattern in self.toc_patterns)
 
     def clean_section_content(self, content: List[str]) -> List[str]:
-        """Clean section content by removing TOC entries and formatting artifacts."""
+        """Clean section content."""
         cleaned = []
         for line in content:
             line = line.strip()
@@ -158,34 +154,57 @@ class SectionParser:
             if self.is_toc_entry(line):
                 continue
             
-            # Skip page numbers
-            if re.match(r'^\d+$', line):
+            # Skip page numbers and formatting lines
+            if re.match(r'^\d+$', line) or re.match(r'^[-_=]{3,}$', line):
                 continue
             
-            # Skip repeated dashes/underscores (often used for formatting)
-            if re.match(r'^[-_=]{3,}$', line):
-                continue
+            # Clean up formatting
+            line = re.sub(r'\s*\.{2,}\s*\d*\s*$', '', line)
+            line = re.sub(r'\s{3,}\d+\s*$', '', line)
             
-            # Clean up TOC-style formatting within lines
-            line = re.sub(r'\s*\.{3,}\s*\d+\s*$', '', line)  # Remove trailing dots and page numbers
-            line = re.sub(r'\s{3,}\d+\s*$', '', line)        # Remove trailing spaces and page numbers
-            
-            if line:  # Only add non-empty lines after cleaning
+            if line:
                 cleaned.append(line)
         
         return cleaned
 
+    def is_valid_section(self, section: Section, parent: Optional[Section] = None) -> bool:
+        """Determine if a section is valid based on context."""
+        # Check if section ID follows parent's pattern
+        if parent:
+            parent_id = self.normalize_section_id(parent.id)
+            section_id = self.normalize_section_id(section.id)
+            
+            # Check if section ID starts with parent ID
+            if section_id.startswith(parent_id + '.'):
+                return True
+                
+            # Allow mixed formats (e.g., "A" parent with "A-1" child)
+            if section_id.startswith(parent_id) and section_id[len(parent_id)] in '.-':
+                return True
+                
+            return False
+        
+        # For top-level sections
+        section_id = self.normalize_section_id(section.id)
+        
+        # Must be a simple identifier (single letter/number or with simple separators)
+        if not re.match(r'^[A-Z0-9](?:[.-]\d+)*$', section_id):
+            return False
+            
+        return True
+
     def parse_sections(self, text: str) -> List[Section]:
-        """Parse text into hierarchical sections with improved handling."""
+        """Parse text into hierarchical sections."""
         lines = text.split('\n')
         sections = []
         current_section = None
         section_stack = []
         content_buffer = []
         in_toc = False
+        seen_sections = set()  # Track seen section IDs
         
         for line in lines:
-            line = line.rstrip()  # Keep leading whitespace for indentation analysis
+            line = line.rstrip()
             if not line:
                 continue
             
@@ -193,7 +212,7 @@ class SectionParser:
             if re.match(r'^\s*(?:TABLE OF )?CONTENTS\s*$', line, re.IGNORECASE):
                 in_toc = True
                 continue
-            elif in_toc and not re.search(r'\.{3,}', line):  # No dots means we're out of TOC
+            elif in_toc and not self.is_toc_entry(line):
                 in_toc = False
             
             if in_toc:
@@ -203,7 +222,7 @@ class SectionParser:
             section_info = self.extract_section_info(line)
             
             if section_info:
-                # Process any buffered content for the current section
+                # Process buffered content
                 if current_section and content_buffer:
                     current_section.content.extend(self.clean_section_content(content_buffer))
                     content_buffer = []
@@ -212,11 +231,15 @@ class SectionParser:
                 section_id, title, level = section_info
                 section_id = self.clean_section_id(section_id)
                 
-                # Update section stack based on level
+                # Skip if we've seen this section before
+                if section_id in seen_sections:
+                    continue
+                
+                # Update section stack
                 while section_stack and section_stack[-1].level >= level:
                     section_stack.pop()
                 
-                # Create new section
+                # Create section
                 parent = section_stack[-1] if section_stack else None
                 new_section = Section(
                     id=section_id,
@@ -226,37 +249,30 @@ class SectionParser:
                     parent_id=parent.id if parent else None
                 )
                 
-                # Check for duplicate sections
-                existing_section = self.find_section_by_id(sections, section_id)
-                if existing_section:
-                    # Merge content if duplicate
-                    logger.warning(f"Duplicate section found: {section_id}")
-                    existing_section.content.extend(new_section.content)
-                    current_section = existing_section
-                    continue
-                
-                # Add to parent's subsections if exists
-                if parent:
-                    parent.subsections.append(new_section)
-                else:
-                    sections.append(new_section)
-                
-                # Update current section and stack
-                current_section = new_section
-                section_stack.append(current_section)
+                # Only add if it's a valid section
+                if self.is_valid_section(new_section, parent):
+                    seen_sections.add(section_id)
+                    
+                    # Add to hierarchy
+                    if parent:
+                        parent.subsections.append(new_section)
+                    else:
+                        sections.append(new_section)
+                    
+                    current_section = new_section
+                    section_stack.append(current_section)
                 
             else:
-                # Buffer the content line
                 content_buffer.append(line)
         
-        # Process any remaining buffered content
+        # Process remaining content
         if current_section and content_buffer:
             current_section.content.extend(self.clean_section_content(content_buffer))
         
         return sections
 
     def find_section_by_id(self, sections: List[Section], target_id: str) -> Optional[Section]:
-        """Find section by ID in section hierarchy."""
+        """Find section by ID in hierarchy."""
         target_id = self.normalize_section_id(target_id)
         
         def search_sections(section_list: List[Section]) -> Optional[Section]:
@@ -272,7 +288,7 @@ class SectionParser:
         return search_sections(sections)
 
     def get_section_content(self, section: Section, include_subsections: bool = True) -> str:
-        """Get section content, optionally including subsection content."""
+        """Get section content."""
         content = '\n'.join(section.content)
         
         if include_subsections and section.subsections:
@@ -295,22 +311,19 @@ class SectionParser:
         return '\n'.join(structure)
 
     def validate_section_structure(self, sections: List[Section]) -> List[str]:
-        """Validate section structure and return any issues found."""
+        """Validate section structure."""
         issues = []
         
         def validate_section(section: Section, parent_id: Optional[str] = None):
-            # Validate section ID
             if not section.id:
                 issues.append(f"Missing section ID in section with title: {section.title}")
             
-            # Validate parent relationship
             if parent_id and parent_id != section.parent_id:
                 issues.append(
                     f"Section {section.id} has incorrect parent ID. "
                     f"Expected {parent_id}, got {section.parent_id}"
                 )
             
-            # Validate level
             expected_level = self.get_section_level(section_id)
             if section.level != expected_level:
                 issues.append(
@@ -318,12 +331,10 @@ class SectionParser:
                     f"Expected {expected_level}, got {section.level}"
                 )
             
-            # Validate subsections
             if section.subsections:
                 for subsection in section.subsections:
                     validate_section(subsection, section.id)
         
-        # Validate all sections
         for section in sections:
             validate_section(section)
         

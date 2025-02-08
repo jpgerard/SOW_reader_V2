@@ -74,26 +74,6 @@ class SOWProcessor:
         
         return text
 
-    def extract_requirements(self, text: str) -> list:
-        """Extract requirements from document text."""
-        # Parse sections
-        sections = self.section_parser.parse_sections(text)
-        
-        # Extract requirements from each section
-        requirements = []
-        for section in sections:
-            section_reqs = self.nlp_extractor.extract_requirements(
-                '\n'.join(section.content),
-                section.id,
-                section.title
-            )
-            requirements.extend([{
-                'section_id': req.section_id,
-                'section_title': req.section_title,
-                'text': req.text,
-                'type': req.type,
-                'confidence': req.confidence,
-                'entities': req.entities
-            } for req in section_reqs])
-        
-        return requirements
+    def extract_requirements(self, text: str, section_id: str, section_title: str) -> list:
+        """Extract requirements from document text with section context."""
+        return self.nlp_extractor.extract_requirements(text, section_id, section_title)

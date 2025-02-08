@@ -2,7 +2,7 @@
 SOW Analyzer Web Application
 """
 
-from typing import Dict
+from typing import Dict, List
 import re
 import streamlit as st
 from pathlib import Path
@@ -16,6 +16,7 @@ import pdfplumber
 from docx import Document
 import logging
 from sow_processor import SOWProcessor
+from section_parser import SectionParser
 from src.search.proposal_matcher import ProposalMatcher
 
 # Configure logging
@@ -69,6 +70,30 @@ def cleanup_temp_files():
                     temp_file.unlink()
                 except Exception as e:
                     st.error(f"Error deleting temp file {temp_file}: {str(e)}")
+
+def extract_requirements_from_sections(processor: SOWProcessor, text: str) -> List[Dict]:
+    """Extract requirements from document text using section parsing."""
+    section_parser = SectionParser()
+    sections = section_parser.parse_sections(text)
+    
+    all_requirements = []
+    
+    # Extract from main sections
+    for section in sections:
+        if section.content:
+            content = '\n'.join(section_parser.clean_section_content(section.content))
+            section_reqs = processor.extract_requirements(content, section.id, section.title)
+            all_requirements.extend(section_reqs)
+        
+        # Extract from subsections
+        if section.subsections:
+            for sub in section.subsections:
+                if sub.content:
+                    content = '\n'.join(section_parser.clean_section_content(sub.content))
+                    sub_reqs = processor.extract_requirements(content, sub.id, sub.title)
+                    all_requirements.extend(sub_reqs)
+    
+    return all_requirements
 
 st.set_page_config(
     page_title="SOW Analyzer",
@@ -233,7 +258,8 @@ def main():
                 # Process SOW document
                 with st.spinner("Processing SOW document..."):
                     text = st.session_state.processor._load_document(temp_path)
-                    requirements = st.session_state.processor.extract_requirements(text)
+                    # Use new section-aware extraction
+                    requirements = extract_requirements_from_sections(st.session_state.processor, text)
                     st.session_state.requirements = requirements
                     st.session_state.progress = 1.0
                 
@@ -274,6 +300,7 @@ def main():
                     df,
                     column_config={
                         "section_id": "Section",
+                        "section_title": "Section Title",
                         "text": "Requirement",
                         "type": "Type",
                         "category": "Category",
@@ -331,6 +358,7 @@ def main():
                                         df,
                                         column_config={
                                             "section_id": "SOW Section",
+                                            "section_title": "Section Title",
                                             "text": "Requirement",
                                             "type": "Type",
                                             "category": "Category",
@@ -372,6 +400,7 @@ def main():
                         df,
                         column_config={
                             "section_id": "SOW Section",
+                            "section_title": "Section Title",
                             "text": "Requirement",
                             "type": "Type",
                             "category": "Category",
@@ -400,6 +429,7 @@ def main():
                         df,
                         column_config={
                             "section_id": "Section",
+                            "section_title": "Section Title",
                             "text": "Requirement",
                             "type": "Type",
                             "category": "Category",
