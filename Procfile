@@ -1,1 +1,1 @@
-web: streamlit run app.py --server.fileWatcherType none
+web: STREAMLIT_SERVER_FILE_WATCHER_TYPE=none streamlit run app.py
