@@ -12,8 +12,7 @@ from dotenv import load_dotenv
 import anthropic
 import torch
 
-# Disable PyTorch JIT
-torch.jit.disable()
+
 
 # Clear Streamlit cache
 st.cache_data.clear()
