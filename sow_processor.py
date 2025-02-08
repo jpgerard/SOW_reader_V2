@@ -6,8 +6,15 @@ import os
 import re
 from docx import Document
 import PyPDF2
+from section_parser import SectionParser
+from nlp_extractor import NLPExtractor
 
 class SOWProcessor:
+    def __init__(self):
+        """Initialize with required components."""
+        self.section_parser = SectionParser()
+        self.nlp_extractor = NLPExtractor()
+
     def _load_document(self, file_path: str) -> str:
         """Load and extract text from a document file."""
         if not os.path.exists(file_path):
@@ -66,3 +73,27 @@ class SOWProcessor:
         text = re.sub(r'\n{3,}', '\n\n', text)  # Collapse multiple blank lines
         
         return text
+
+    def extract_requirements(self, text: str) -> list:
+        """Extract requirements from document text."""
+        # Parse sections
+        sections = self.section_parser.parse_sections(text)
+        
+        # Extract requirements from each section
+        requirements = []
+        for section in sections:
+            section_reqs = self.nlp_extractor.extract_requirements(
+                '\n'.join(section.content),
+                section.id,
+                section.title
+            )
+            requirements.extend([{
+                'section_id': req.section_id,
+                'section_title': req.section_title,
+                'text': req.text,
+                'type': req.type,
+                'confidence': req.confidence,
+                'entities': req.entities
+            } for req in section_reqs])
+        
+        return requirements

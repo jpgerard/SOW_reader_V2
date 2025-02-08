@@ -232,7 +232,8 @@ def main():
             try:
                 # Process SOW document
                 with st.spinner("Processing SOW document..."):
-                    requirements = st.session_state.processor.process_document(temp_path)
+                    text = st.session_state.processor._load_document(temp_path)
+                    requirements = st.session_state.processor.extract_requirements(text)
                     st.session_state.requirements = requirements
                     st.session_state.progress = 1.0
                 
