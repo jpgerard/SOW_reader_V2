@@ -35,6 +35,7 @@ class NLPExtractor:
         
         # Common requirement indicators
         self.requirement_patterns = [
+            # Core patterns that work well across documents
             r"(?i)shall\s+",
             r"(?i)must\s+",
             r"(?i)required\s+to\s+",
@@ -44,6 +45,10 @@ class NLPExtractor:
             r"(?i)will\s+ensure\s+",
             r"(?i)shall\s+ensure\s+",
             r"(?i)must\s+ensure\s+",
+            # Timeline patterns
+            r"(?i)within\s+\d+\s+(?:day|week|month|year)",
+            r"(?i)no\s+later\s+than",
+            r"(?i)by\s+the\s+end\s+of",
         ]
         
         # Entity type mappings with weighted categories
