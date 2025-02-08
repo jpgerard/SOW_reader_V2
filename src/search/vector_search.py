@@ -142,9 +142,11 @@ class ProposalVectorizer:
                     logger.warning(f"Failed to load from cache: {str(e)}")
             
             # Generate new embedding
-            embedding = self.model.encode(text, convert_to_tensor=True)
-            embedding = torch.nn.functional.normalize(embedding, p=2, dim=0)
-            embedding_np = embedding.cpu().numpy()
+            # Disable gradients and JIT for inference
+            with torch.no_grad(), torch.jit.optimized_execution(False):
+                embedding = self.model.encode(text, convert_to_tensor=True)
+                embedding = torch.nn.functional.normalize(embedding, p=2, dim=0)
+                embedding_np = embedding.cpu().numpy()
             
             # Save to cache
             try:
