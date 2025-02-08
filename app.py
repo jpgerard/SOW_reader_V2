@@ -19,12 +19,21 @@ from sow_processor import SOWProcessor
 from section_parser import SectionParser
 from nlp_extractor import NLPExtractor
 
-# Initialize PyTorch after other imports
-try:
-    import torch
-    torch.set_grad_enabled(False)  # Disable gradients since we're only doing inference
-except Exception as e:
-    st.warning(f"PyTorch initialization warning: {str(e)}")
+@st.cache_resource
+def initialize_pytorch():
+    """Initialize PyTorch with caching to prevent reinitialization"""
+    try:
+        import torch
+        torch.set_grad_enabled(False)  # Disable gradients since we're only doing inference
+        if hasattr(torch, 'jit'):
+            torch.jit.disable()
+        return True
+    except Exception as e:
+        st.warning(f"PyTorch initialization warning: {str(e)}")
+        return False
+
+# Initialize PyTorch at startup
+initialize_pytorch()
 
 def check_api_key():
     """Check if ANTHROPIC_API_KEY is set and valid"""
