@@ -10,14 +10,6 @@ import json
 import io
 from dotenv import load_dotenv
 import anthropic
-import torch
-
-# Disable PyTorch JIT
-torch.jit.disable()
-
-# Clear Streamlit cache
-st.cache_data.clear()
-st.cache_resource.clear()
 
 # Load environment variables
 load_dotenv()
@@ -26,6 +18,13 @@ from docx import Document
 from sow_processor import SOWProcessor
 from section_parser import SectionParser
 from nlp_extractor import NLPExtractor
+
+# Initialize PyTorch after other imports
+try:
+    import torch
+    torch.set_grad_enabled(False)  # Disable gradients since we're only doing inference
+except Exception as e:
+    st.warning(f"PyTorch initialization warning: {str(e)}")
 
 def check_api_key():
     """Check if ANTHROPIC_API_KEY is set and valid"""
