@@ -3,6 +3,14 @@ SOW Analyzer Web Application
 """
 
 import streamlit as st
+
+# Must be the first Streamlit command
+st.set_page_config(
+    page_title="SOW Analyzer",
+    page_icon="📄",
+    layout="wide"
+)
+
 from pathlib import Path
 import pandas as pd
 import os
@@ -19,21 +27,28 @@ from sow_processor import SOWProcessor
 from section_parser import SectionParser
 from nlp_extractor import NLPExtractor
 
-@st.cache_resource
-def initialize_pytorch():
-    """Initialize PyTorch with caching to prevent reinitialization"""
+# Initialize PyTorch in a way that avoids file watcher issues
+@st.cache_resource(show_spinner=False)
+def get_torch():
+    """Get PyTorch instance with caching to prevent reinitialization"""
+    import importlib
+    torch_spec = importlib.util.find_spec("torch")
+    if torch_spec is None:
+        st.warning("PyTorch not found")
+        return None
+    
     try:
-        import torch
+        torch = importlib.import_module("torch")
         torch.set_grad_enabled(False)  # Disable gradients since we're only doing inference
         if hasattr(torch, 'jit'):
             torch.jit.disable()
-        return True
+        return torch
     except Exception as e:
         st.warning(f"PyTorch initialization warning: {str(e)}")
-        return False
+        return None
 
 # Initialize PyTorch at startup
-initialize_pytorch()
+torch = get_torch()
 
 def check_api_key():
     """Check if ANTHROPIC_API_KEY is set and valid"""
@@ -68,12 +83,6 @@ def cleanup_temp_files():
                     temp_file.unlink()
                 except Exception as e:
                     st.error(f"Error deleting temp file {temp_file}: {str(e)}")
-
-st.set_page_config(
-    page_title="SOW Analyzer",
-    page_icon="📄",
-    layout="wide"
-)
 
 def main():
     st.title("SOW Analyzer")
