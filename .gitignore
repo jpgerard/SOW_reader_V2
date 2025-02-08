@@ -54,7 +54,8 @@ tsconfig.json
 .devcontainer/
 examples/
 public/
-src/
+src/*
+!src/search/
 cline_docs/
 
 # Test files
