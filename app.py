@@ -2,7 +2,7 @@
 SOW Analyzer Web Application
 """
 
-from typing import Dict, List
+from typing import Dict, List, Tuple
 import re
 import streamlit as st
 from pathlib import Path
@@ -79,8 +79,9 @@ def cleanup_temp_files():
                 except Exception as e:
                     st.error(f"Error deleting temp file {temp_file}: {str(e)}")
 
-def extract_requirements_from_sections(processor: SOWProcessor, text: str) -> List[Dict]:
+def extract_requirements_from_sections(processor: SOWProcessor, text_tuple: Tuple[str, List[int]]) -> List[Dict]:
     """Extract requirements from document text using section parsing."""
+    text, line_offsets = text_tuple  # Unpack the tuple
     section_parser = SectionParser()
     sections = section_parser.parse_sections(text)
     
@@ -266,9 +267,10 @@ def main():
             try:
                 # Process SOW document
                 with st.spinner("Processing SOW document..."):
-                    text = st.session_state.processor._load_document(temp_path)
+                    # Get text and line offsets from document
+                    text_tuple = st.session_state.processor._load_document(temp_path)
                     # Use new section-aware extraction
-                    requirements = extract_requirements_from_sections(st.session_state.processor, text)
+                    requirements = extract_requirements_from_sections(st.session_state.processor, text_tuple)
                     st.session_state.requirements = requirements
                     st.session_state.progress = 1.0
                 
