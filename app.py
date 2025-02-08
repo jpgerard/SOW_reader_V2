@@ -23,8 +23,16 @@ from src.search.proposal_matcher import ProposalMatcher
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Load environment variables
-load_dotenv()
+def convert_requirement_to_dict(req):
+    """Convert a Requirement object to a dictionary."""
+    return {
+        'section_id': req.section_id,
+        'section_title': req.section_title,
+        'text': req.text,
+        'type': req.type,
+        'confidence': req.confidence,
+        'entities': req.entities
+    }
 
 def check_api_key():
     """Check if ANTHROPIC_API_KEY is set and valid"""
@@ -93,7 +101,8 @@ def extract_requirements_from_sections(processor: SOWProcessor, text: str) -> Li
                     sub_reqs = processor.extract_requirements(content, sub.id, sub.title)
                     all_requirements.extend(sub_reqs)
     
-    return all_requirements
+    # Convert Requirement objects to dictionaries
+    return [convert_requirement_to_dict(req) for req in all_requirements]
 
 st.set_page_config(
     page_title="SOW Analyzer",
