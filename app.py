@@ -26,12 +26,11 @@ logger = logging.getLogger(__name__)
 def convert_requirement_to_dict(req):
     """Convert a Requirement object to a dictionary."""
     return {
-        'section_id': req.section_id,
-        'section_title': req.section_title,
-        'text': req.text,
-        'type': req.type,
-        'confidence': req.confidence,
-        'entities': req.entities
+        'section_id': req.get('section_id', ''),
+        'section_title': req.get('section_title', ''),
+        'text': req['text'],
+        'type': req['type'],
+        'confidence': req['confidence']
     }
 
 def check_api_key():
@@ -91,19 +90,42 @@ def extract_requirements_from_sections(processor: SOWProcessor, text_tuple: Tupl
     for section in sections:
         if section.content:
             content = '\n'.join(section_parser.clean_section_content(section.content))
-            section_reqs = processor.extract_requirements(content, section.id, section.title)
-            all_requirements.extend(section_reqs)
+            # Create a temporary file for the section content
+            temp_file = Path("temp_section.txt")
+            temp_file.write_text(content)
+            try:
+                # Process the section content
+                section_reqs = processor.process_document(str(temp_file))
+                # Update section IDs
+                for req in section_reqs:
+                    req['section_id'] = section.id
+                    req['section_title'] = section.title
+                all_requirements.extend(section_reqs)
+            finally:
+                if temp_file.exists():
+                    temp_file.unlink()
         
         # Extract from subsections
         if section.subsections:
             for sub in section.subsections:
                 if sub.content:
                     content = '\n'.join(section_parser.clean_section_content(sub.content))
-                    sub_reqs = processor.extract_requirements(content, sub.id, sub.title)
-                    all_requirements.extend(sub_reqs)
+                    # Create a temporary file for the subsection content
+                    temp_file = Path("temp_subsection.txt")
+                    temp_file.write_text(content)
+                    try:
+                        # Process the subsection content
+                        sub_reqs = processor.process_document(str(temp_file))
+                        # Update section IDs
+                        for req in sub_reqs:
+                            req['section_id'] = sub.id
+                            req['section_title'] = sub.title
+                        all_requirements.extend(sub_reqs)
+                    finally:
+                        if temp_file.exists():
+                            temp_file.unlink()
     
-    # Convert Requirement objects to dictionaries
-    return [convert_requirement_to_dict(req) for req in all_requirements]
+    return all_requirements
 
 st.set_page_config(
     page_title="SOW Analyzer",
@@ -267,10 +289,8 @@ def main():
             try:
                 # Process SOW document
                 with st.spinner("Processing SOW document..."):
-                    # Get text and line offsets from document
-                    text_tuple = st.session_state.processor._load_document(temp_path)
-                    # Use new section-aware extraction
-                    requirements = extract_requirements_from_sections(st.session_state.processor, text_tuple)
+                    # Process the document directly
+                    requirements = st.session_state.processor.process_document(str(temp_path))
                     st.session_state.requirements = requirements
                     st.session_state.progress = 1.0
                 
